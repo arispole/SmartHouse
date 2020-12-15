@@ -1,4 +1,5 @@
 #include "uart.h"
+#include "pwm.h"
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -77,7 +78,7 @@ void UART_putChar(struct UART* uart, uint8_t c) {
     ATOMIC_BLOCK(ATOMIC_FORCEON) {
         uart->tx_buffer[uart->tx_end] = c;
         ++uart->tx_end;
-        if (uart->tx_end >= BUFFER_SIZE) {
+        if (uart->tx_end >= UART_BUFFER_SIZE) {
             uart->tx_end = 0;
         }
         ++uart->tx_size;
@@ -91,7 +92,7 @@ uint8_t UART_getChar(struct UART* uart) {
     ATOMIC_BLOCK(ATOMIC_FORCEON) {
         c = uart->rx_buffer[uart->rx_start];
         ++uart->rx_start;
-        if (uart->rx_start >= BUFFER_SIZE) {
+        if (uart->rx_start >= UART_BUFFER_SIZE) {
             uart->rx_start = 0;
         }
         --uart->rx_size;
@@ -100,11 +101,12 @@ uint8_t UART_getChar(struct UART* uart) {
 }
 
 ISR(USART0_RX_vect) {
+    led_ON(2);
     uint8_t c = UDR0;
     if (uart_0.rx_size < UART_BUFFER_SIZE) {
         uart_0.rx_buffer[uart_0.rx_end] = c;
         ++uart_0.rx_end;
-        if (uart_0.rx_end >= BUFFER_SIZE) {
+        if (uart_0.rx_end >= UART_BUFFER_SIZE) {
             uart_0.rx_end = 0;
         }
         ++uart_0.rx_size;
@@ -118,7 +120,7 @@ ISR(USART0_UDRE_vect) {
     else {
         UDR0 = uart_0.tx_buffer[uart_0.tx_start];
         ++uart_0.tx_start;
-        if (uart_0.tx_start >= BUFFER_SIZE) {
+        if (uart_0.tx_start >= UART_BUFFER_SIZE) {
             uart_0.tx_start = 0;
         }
         --uart_0.tx_size;

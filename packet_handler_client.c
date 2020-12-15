@@ -55,8 +55,9 @@ void print_packet(OperationPacket* op)
         {
             printf("\nLettura %s\n", getPinName(op->pin_num + 16));
             uint8_t temp = op->intensity;
-            double tempK = log(10000.0 * ((1024.0 / temp -1)));
-            tempK= 1 / (0.001129148 + (0.000234125 + (0.0000000876741 * tempK * tempK )) * tempK );
+            double tempK = (10000.0 *1024.0/temp -10000.0);
+			tempK= 3950 /log(tempK/(10000.0*pow(M_E,(-3950/298.15))));
+//            tempK= 1 / (0.001129148 + (0.000234125 + (0.0000000876741 * tempK * tempK )) * tempK );
             float tempC = tempK - 273.15;
             printf("Temperatura: %2.2f\n\n", tempC);
         }

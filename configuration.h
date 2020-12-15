@@ -2,6 +2,8 @@
 #define MAX_LEN_DEV_NAME 15
 #define NUM_PIN 23
 
+#include "buffer_client.h"
+
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
@@ -15,7 +17,6 @@ typedef struct {
     char pinNames[NUM_PIN][MAX_LEN_PIN_NAME];
 } Configuration;
 
-Configuration config;
 
 void configInit();
 
@@ -31,5 +32,7 @@ char* getDeviceName();
 
 int getPinByName(char *name);
 
-int configure();
+int getOldConfig(cbuf_handle_t tx_buf);
+
+int configure(cbuf_handle_t tx_buf);
 

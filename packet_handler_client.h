@@ -1,13 +1,12 @@
-#include "packets.h"
-#include "buffer_client.h"
-
 #include <stdint.h>
+#include "packets.h"
 
-typedef struct 
+typedef struct CommandName
 {
 	const char* name;
 	Command command;
 } CommandName;
+
 
 extern CommandName commandNames[];
 

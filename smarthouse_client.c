@@ -1,5 +1,6 @@
 #include "packet_handler_client.h"
 #include "serial_port.h"
+#include "configuration.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -9,9 +10,19 @@
 #include <readline/history.h>
 #include <pthread.h>
 
-int run, printed, fd;
+int run, printed, fd, configuration_phase, configuration_found;
 cbuf_handle_t tx_buf;
 uint8_t *tx_buffer;
+
+OperationPacket *op;
+
+ConfigurationPacket cp_struct = {
+    .command = NULL,
+    .pin_num = NULL,
+    .pin_name = NULL
+};
+
+ConfigurationPacket *cp = &cp_struct;
 
 int send_packet() 
 {
@@ -19,12 +30,13 @@ int send_packet()
     while (circular_buf_empty(tx_buf));
     do {
         circular_buf_get(tx_buf, data);
+        printf("%02x  ", *data);
         write(fd, data, 1);
     } while (*data != EOT);
     return 0;
 }
 
-int receive_packet(OperationPacket* op)
+int receive_packet()
 {
     uint8_t* data = malloc (sizeof(uint8_t));
     do {
@@ -33,25 +45,54 @@ int receive_packet(OperationPacket* op)
 
     int ret = -1;
     uint8_t checksum = 0;
+    uint8_t i;
 
     read(fd, data, 1);
     checksum ^= *data;
-    if (*data == ack) ret = 0;
-    else if (*data == nack) ret = -1;
-    else 
-    {
-        op->command = *data;
-        ret = 1;
+    switch (*data) {
+        case (ack):
+            ret = 0;
+            break;
+        case (nack):
+            ret = -1;
+            break;
+        case (stopConfig):
+            ret = -2;
+            break;
+        case (input):
+        case (status):
+            op->command = *data;
+            ret = 1;
+
+            read(fd, data, 1);
+            checksum ^= *data;
+            op->pin_num = *data;
+
+            read(fd, data, 1);
+            checksum ^= *data;
+            op->intensity = *data;
+            break;
+        case (conf):
+            printf("pacchetto\n");
+            cp->command = *data;
+            ret = 2;
+
+            read(fd, data, 1);
+            checksum ^= *data;
+            cp->pin_num = *data;
+
+            for (i = 0; i < MAX_LEN_PIN_NAME; i++) {
+                read(fd, data, 1);
+                checksum ^= *data;
+                printf(":: %02x\n", *data);
+                cp->pin_name[i] = *data;
+            }
+
+            printf("fine lettura pacchetto\n");
+            
+            break;
     }
     
-    read(fd, data, 1);
-    checksum ^= *data;
-    if (ret == 1) op->pin_num = *data;
-
-    read(fd, data, 1);
-    checksum ^= *data;
-    if (ret == 1) op->intensity = *data;
-
     read(fd, data, 1);
     if (checksum != *data) ret = -1;
 
@@ -63,18 +104,32 @@ int receive_packet(OperationPacket* op)
 
 void* packetHandlerFunction()
 {
-    OperationPacket* op;
+
     while (run)
     {
         save_current_head_pointer(tx_buf);
         send_packet();
-        int retval = receive_packet(op);
+        int retval = receive_packet();
         if (retval == -1) {
-            update_pointer(tx_buf);
+            if (configuration_phase) {
+                printf("ppp\n");
+                configuration_phase = 0;
+                configuration_found = 0;
+            }
+            else update_pointer(tx_buf);
         }
         else if (retval == 1) {
             print_packet(op);
             printed = 1;
+        }
+        else if (retval == 2) {
+            do {
+                setPinName(cp->pin_num, cp->pin_name);
+                printf("settato nome\n");
+                retval = receive_packet();
+            } while (retval != -2);
+            configuration_phase = 0;
+            configuration_found = 1;
         }
         usleep(1000000);
     }
@@ -94,6 +149,10 @@ void* shellFunction()
         if (!strcmp(token, "quit")) 
         {
             run = 0;
+            continue;
+        }
+        if (!strcmp(token, "configurazione")) {
+            configure(tx_buf);
             continue;
         }
         
@@ -124,9 +183,25 @@ void* shellFunction()
             printf("Impossibile trovare il nome del pin\n");
             continue;
         }
-        if (retval >= 0 && retval < 8) pin = retval + 2;
-        else if (retval >= 8 && retval < 16) pin = retval + 38;
-        else pin = retval - 16;
+        if (retval >= 8 && retval < 16) {
+            switch (retval) {
+                case (8):
+                case (9):
+                    pin = retval - 6;
+                    break;
+                case (10):
+                case (11):
+                case (12):
+                case (13):
+                    pin = retval - 5;
+                    break;
+                case (14):
+                case (15):
+                    pin = retval - 3;
+                    break; 
+            }
+        }
+        else if (retval >= 16 && retval < 24) pin = retval + 30;
 
         OperationPacket op = 
         {
@@ -160,6 +235,7 @@ void* shellFunction()
     pthread_exit(NULL);
 }
 
+
 int main()
 {
 
@@ -169,33 +245,27 @@ int main()
     tx_buffer  = malloc(BUFFER_MAX_SIZE * sizeof(uint8_t));
     tx_buf = circular_buf_init(tx_buffer, BUFFER_MAX_SIZE);
 
-    configInit();
+    pthread_t packetHandler, shell;
 
     run = 1;
     printed = 0;
 
-    bool configuration = true;
+    configInit();
 
-    while (configuration)
-    {
-        printf("Scegli il tipo di configurazione del device ([usage] vecchia/nuova)\n");
-        char *input = readline(NULL);
-        if (!strcmp(input,"nuova"))
-        {
-            configure();
-            configuration = false;
-        }
-        else if (!strcmp(input,"vecchia"))
-        {
-            // TO DO
-            configuration = false;
-        }  
-        else printf("Istruzione inesistete\n");            
-    }
-
-    pthread_t packetHandler, shell;
+    configuration_phase = 1;
+    configuration_found = 0;
 
     pthread_create (&packetHandler, NULL, packetHandlerFunction, NULL);
+
+    printf("INSERISCI QUALCOSA: \n");
+    char *res = readline(NULL);
+
+    getOldConfig(tx_buf);
+
+    while (configuration_phase);
+
+    if (!configuration_found) configure(tx_buf);
+
     pthread_create (&shell, NULL, shellFunction, NULL);
 
     pthread_join(packetHandler, NULL);

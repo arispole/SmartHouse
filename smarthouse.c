@@ -1,8 +1,9 @@
 #include "uart.h"
 #include "packets.h"
-#include "pwm.h"
+//#include "pwm.h"
 #include "digital_input.h"
 #include "adc.h"
+#include "eeprom.h"
 
 #include <util/delay.h>
 #include <stdio.h>
@@ -16,21 +17,24 @@
 #define EOT 0xBB
 
 static struct UART* uart;
+
 OperationPacket op;
-
-OperationPacket ACK = {
-  .command = ack,
-  .pin_num = NULL,
-  .intensity = NULL,
-};
-
-OperationPacket NACK = {
-  .command = nack,
-  .pin_num = NULL,
-  .intensity = NULL,
-};
-
 OperationPacket send;
+
+ConfigurationPacket cp;
+ConfigurationPacket sendC;
+
+ControlPacket ACK = {
+  .command = ack,
+};
+
+ControlPacket NACK = {
+  .command = nack,
+};
+
+ControlPacket STOPCONFIG = {
+  .command = stopConfig,
+};
 
 int execute() {
 
@@ -64,26 +68,11 @@ int execute() {
 
 }
 
-int readPacket() {
+int readOP(uint8_t checksum) {
 
   uint8_t c;
-
-  while (!UART_rxBufferFull(uart));
-
-  while (UART_rxBufferFull(uart)) {
-      c = UART_getChar(uart);
-      if (c == SOH) {
-        break;
-      }
-  }
-  
   int ret = 0;
-  uint8_t checksum = 0;
 
-  c = UART_getChar(uart);
-  checksum ^= c;
-  op.command = c;
-  
   c = UART_getChar(uart);
   checksum ^= c;
   op.pin_num = c;
@@ -98,18 +87,155 @@ int readPacket() {
   c = UART_getChar(uart);
   if (c == EOT && ret != -1) ret = execute();
 
+  return ret;
+}
+
+int saveConfig() {
+
+  unsigned int address = cp.pin_num * MAX_LEN_PIN_NAME + 1;
+
+  uint8_t i;
+  for (i = 0; i < MAX_LEN_PIN_NAME; i++) {
+    EEPROM_write(address, cp.pin_name[i]);
+    address++;
+  }
+
+  return 0;
+}
+
+void readConfiguration() {
+  
+  unsigned int address = 1, j = 0;
+  uint8_t c;
+  sendC.command = 6;
+
+  for (address = 1; address < (24*MAX_LEN_PIN_NAME); address += MAX_LEN_PIN_NAME) {
+    sendC.pin_num = j++;
+    for (uint8_t i = 0; i < MAX_LEN_PIN_NAME; i++){
+      sendC.pin_name[i] = EEPROM_read(address+i);
+    }
+    sendPacket(2);
+  }
+
+}
+
+void resetConfig() {
+
+  unsigned int address;
+
+  for (address = 1; address < (24*MAX_LEN_PIN_NAME); address++) {
+    EEPROM_write(address, 0);
+  }
+
+}
+
+int readCP(uint8_t checksum) {
+
+  uint8_t c;
+  int ret = 0;
+
+  c = UART_getChar(uart);
+  checksum ^= c;
+  cp.pin_num = c;
+
+  uint8_t i;
+  for (i = 0; i < MAX_LEN_PIN_NAME; i++) {
+    c = UART_getChar(uart);
+    checksum ^= c;
+    cp.pin_name[i] = c;
+  }
+  
+  c = UART_getChar(uart);
+  if (c != checksum) ret = -1;
+  
+  c = UART_getChar(uart);
+  if (c == EOT && ret != -1) {
+    ret = saveConfig();
+  }
+
+  return ret;
+}
+
+int readPacket() {
+
+  uint8_t c;
+  int found = 0;
+
+  while(!found) {
+    while (!UART_rxBufferFull(uart));
+    do {
+      c = UART_getChar(uart);
+      if (c == SOH) {
+        found = 1;
+        break;
+      }
+    } while (UART_rxBufferFull(uart));
+  }
+  
+  int ret = 0;
+  uint8_t checksum = 0;
+
+  c = UART_getChar(uart);
+  checksum ^= c;
+  if (c >= ledOn && c <= status) {
+    op.command = c;
+    ret = readOP(checksum);
+  }
+
+  else if (c == conf) {
+    cp.command = c;
+    ret = readCP(checksum);
+  }
+
+  else {
+    c = UART_getChar(uart);
+    if (c != checksum) ret = -1;
+
+    if (UART_getChar(uart) == EOT && ret != -1) {
+
+      if (EEPROM_read(0) != 3) {
+        resetConfig();
+        EEPROM_write(0,3);
+        ret = -1;
+      }
+      else {
+        readConfiguration();
+        ret = 3;
+      } 
+    }
+  }
   
   return ret;
 }
 
 void sendPacket(int status) {
   uint8_t *data;
-  if (status == 0) data = (uint8_t*) &ACK;
-  else if (status == -1) data = (uint8_t*) &NACK;
-  else data = (uint8_t*) &send;
+  size_t size;
+  switch (status) {
+    case 0:
+      data = (uint8_t*) &ACK;
+      size = sizeof(ControlPacket);
+      break;
+    case -1:
+      data = (uint8_t*) &NACK;
+      size = sizeof(ControlPacket);
+      break;
+    case 1:
+      data = (uint8_t*) &send;
+      size = sizeof(OperationPacket);
+      break;
+    case 2:
+      data = (uint8_t*) &sendC;
+      size = sizeof(ConfigurationPacket);
+      break;
+    case 3:
+      data = (uint8_t*) &STOPCONFIG;
+      size = sizeof(ControlPacket);
+      break;
+    }
+
   UART_putChar(uart, SOH);
   uint8_t checksum = 0;
-  size_t size = sizeof(OperationPacket);
   while (size) 
   {
     UART_putChar(uart, *data);
@@ -130,6 +256,9 @@ int main(void){
   digInput_Init();
 
   ADC_init();
+
+//EEPROM_write(0,0);
+ // resetConfig();
 
   while(1) {
     int ret = readPacket();

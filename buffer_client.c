@@ -135,7 +135,6 @@ int circular_buf_put(cbuf_handle_t cbuf, uint8_t data) {
 }
 
 int circular_buf_get(cbuf_handle_t cbuf, uint8_t * data) {
-    
     assert(cbuf && data && cbuf->buffer);
 
     int r = -1;

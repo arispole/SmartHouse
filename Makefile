@@ -29,10 +29,10 @@ BINS=smarthouse.elf
 
 # put here the additional .o files you want to generate
 # one .c file for each .o should be present
-OBJS= uart.o pwm.o digital_input.o adc.o
+OBJS= uart.o pwm.o digital_input.o adc.o eeprom.o
 
 # put here the additional header files needed for compilation
-HEADERS= uart.h packets.h pwm.h digital_input.h adc.h
+HEADERS= uart.h packets.h pwm.h digital_input.h adc.h eeprom.h
 
 
 # the file below contains the actual rules
