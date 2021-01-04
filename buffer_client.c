@@ -1,13 +1,16 @@
-#include "buffer_client.h"
-
+#include <assert.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <assert.h>
-#include <stdlib.h>
 
-struct circular_buf_t {
-	uint8_t * buffer;
+#include <stdio.h>
+
+#include "buffer_client.h"
+
+// Opaque circular buffer structure
+struct circul_buf_t {
+	uint8_t* buffer;
 	size_t head;
 	size_t temp_head;
 	size_t tail;
@@ -31,8 +34,7 @@ cbuf_handle_t circular_buf_init(uint8_t* buffer, size_t size) {
 	return cbuf;
 }
 
-void circular_buf_reset(cbuf_handle_t cbuf) 
-{
+void circular_buf_reset(cbuf_handle_t cbuf) {
     assert(cbuf);
 
     cbuf->head = 0;
@@ -130,11 +132,10 @@ int circular_buf_put(cbuf_handle_t cbuf, uint8_t data) {
 		advance_pointer(cbuf);
         r = 0;
     }
-
     return r;
 }
 
-int circular_buf_get(cbuf_handle_t cbuf, uint8_t * data) {
+int circular_buf_get(cbuf_handle_t cbuf, uint8_t* data) {
     assert(cbuf && data && cbuf->buffer);
 
     int r = -1;
@@ -146,6 +147,5 @@ int circular_buf_get(cbuf_handle_t cbuf, uint8_t * data) {
 
         r = 0;
     }
-
     return r;
 }

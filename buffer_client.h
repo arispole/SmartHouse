@@ -1,10 +1,7 @@
 #define BUFFER_MAX_SIZE 256
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
 
 // Opaque circular buffer structure
-typedef struct circular_buf_t circular_buf_t;
+typedef struct circul_buf_t circular_buf_t;
 
 // Handle type, the way users interact with the API
 typedef circular_buf_t* cbuf_handle_t;
@@ -26,7 +23,7 @@ int circular_buf_put(cbuf_handle_t cbuf, uint8_t data);
 
 /// Retrieve a value from the buffer
 /// Returns 0 on success, -1 if the buffer is empty
-int circular_buf_get(cbuf_handle_t cbuf, uint8_t * data);
+int circular_buf_get(cbuf_handle_t cbuf, uint8_t* data);
 
 /// Returns true if the buffer is empty
 bool circular_buf_empty(cbuf_handle_t cbuf);

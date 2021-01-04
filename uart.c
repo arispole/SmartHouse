@@ -101,7 +101,6 @@ uint8_t UART_getChar(struct UART* uart) {
 }
 
 ISR(USART0_RX_vect) {
-    led_ON(2);
     uint8_t c = UDR0;
     if (uart_0.rx_size < UART_BUFFER_SIZE) {
         uart_0.rx_buffer[uart_0.rx_end] = c;

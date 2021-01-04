@@ -1,10 +1,3 @@
-#include "uart.h"
-#include "packets.h"
-//#include "pwm.h"
-#include "digital_input.h"
-#include "adc.h"
-#include "eeprom.h"
-
 #include <util/delay.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,8 +6,19 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+#include "constants.h"
+#include "commands.h"
+#include "packets.h"
+#include "uart.h"
+#include "pwm.h"
+#include "digital_input.h"
+#include "adc.h"
+#include "eeprom.h"
+
+/*
 #define SOH 0xAA
 #define EOT 0xBB
+*/
 
 static struct UART* uart;
 
@@ -109,7 +113,7 @@ void readConfiguration() {
   uint8_t c;
   sendC.command = 6;
 
-  for (address = 1; address < (24*MAX_LEN_PIN_NAME); address += MAX_LEN_PIN_NAME) {
+  for (address = 1; address < (25*MAX_LEN_PIN_NAME); address += MAX_LEN_PIN_NAME) {
     sendC.pin_num = j++;
     for (uint8_t i = 0; i < MAX_LEN_PIN_NAME; i++){
       sendC.pin_name[i] = EEPROM_read(address+i);
@@ -123,7 +127,7 @@ void resetConfig() {
 
   unsigned int address;
 
-  for (address = 1; address < (24*MAX_LEN_PIN_NAME); address++) {
+  for (address = 0; address < (25*MAX_LEN_PIN_NAME); address++) {
     EEPROM_write(address, 0);
   }
 
@@ -187,7 +191,16 @@ int readPacket() {
     ret = readCP(checksum);
   }
 
-  else {
+  else if (c == resetConf) {
+    c = UART_getChar(uart);
+    if (c != checksum) ret = -1;
+    if (UART_getChar(uart) == EOT && ret != -1) {
+          resetConfig();
+          ret = 0;
+    }
+  }
+
+  else if (c == readConfig) {
     c = UART_getChar(uart);
     if (c != checksum) ret = -1;
 
@@ -204,6 +217,7 @@ int readPacket() {
       } 
     }
   }
+  else ret = -1;
   
   return ret;
 }
@@ -256,9 +270,6 @@ int main(void){
   digInput_Init();
 
   ADC_init();
-
-//EEPROM_write(0,0);
- // resetConfig();
 
   while(1) {
     int ret = readPacket();
