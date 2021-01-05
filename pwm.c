@@ -1,9 +1,9 @@
-#include "pwm.h"
-
 #include <avr/interrupt.h>
+#include <stdint.h>
+#include <stdbool.h> 
 
-// pwm enabled array
-
+#include "pwm.h"
+#include "constants.h"
 
 // pin masks
 const uint8_t mask2 = (1 << 4);
@@ -41,6 +41,8 @@ const uint8_t mask12 = (1 << 6);
 #define TCCR4A_COM4A_ENABLE_MASK ((1 << COM4A1) | (1 << COM4A0))
 #define TCCR4A_COM4B_ENABLE_MASK ((1 << COM4B1) | (1 << COM4B0))
 #define TCCR4A_COM4C_ENABLE_MASK ((1 << COM4C1) | (1 << COM4C0))
+
+// pwm enabled array
 
 PWM_Enabled pwm_enabled_array[] = 
 {   
@@ -120,7 +122,6 @@ void PWM_init(void) {
 
   // enable interrupts
   sei();
-
 }
 
 int led_ON(uint8_t pin_num) {
@@ -128,7 +129,6 @@ int led_ON(uint8_t pin_num) {
     pwm_enabled_array[pin_num].is_enabled = false;
 
     // TO DO -> check pin boundaries 
-
     switch (pin_num) {
       case 2:
         TCCR3A = TCCR3A_MASK;           //disable OCRn
@@ -163,7 +163,6 @@ int led_ON(uint8_t pin_num) {
         PORTB |= mask12;
         break;
     }
-
     return 0;
 }
 
@@ -172,7 +171,6 @@ int led_OFF(uint8_t pin_num) {
     pwm_enabled_array[pin_num].is_enabled = false;
 
     // TO DO -> check pin boundaries 
-
     switch (pin_num) {
       case 2:
         TCCR3A = TCCR3A_MASK;             //disable OCRn
@@ -207,7 +205,6 @@ int led_OFF(uint8_t pin_num) {
         PORTB &= ~ mask12;
         break; 
     }
-
     return 0;
 }
 
@@ -216,7 +213,6 @@ int led_DIMMER(uint8_t pin_num, uint8_t intensity) {
     pwm_enabled_array[pin_num].is_enabled = true;
 
     // TO DO -> check pin and intensity boundaries 
-
     switch (pin_num) {
       case 2:
         TCCR3A |= TCCR3A_COM3B_ENABLE_MASK;         //enable OCRn
@@ -251,20 +247,18 @@ int led_DIMMER(uint8_t pin_num, uint8_t intensity) {
         OCR1BL = 255 - (intensity * 255)/100;
         break;
     }
-
     return 0;
 }
 
 uint8_t get_intensity(uint8_t pin_num) {
 
-  uint8_t intensity;
+  uint8_t intensity = 0;
+  bool isEnabled = false;
+  int i = 0;
 
-  bool isEnabled;
-  int i;
-  for (i = 0; i < sizeof(pwm_enabled_array); i++) {
-    if (pwm_enabled_array[i].pin_num == pin_num) isEnabled = pwm_enabled_array[i].is_enabled;
-  }
-  
+  while (pwm_enabled_array[i].pin_num != pin_num) ++i;
+    if (i < BLOC_PIN) isEnabled = pwm_enabled_array[i].is_enabled;
+    else return 0;
   switch (pin_num) {
       case 2:
         if (isEnabled) intensity = 20; // intensity = (255 - OCR3BL) * 100/255;     
@@ -299,9 +293,5 @@ uint8_t get_intensity(uint8_t pin_num) {
         else intensity = ((PORTB&mask12) == 0) * 100;
         break;
     }
-
   return intensity;
-
 }
-
-

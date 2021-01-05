@@ -94,7 +94,7 @@ int receive_packet(uint8_t* data, OperationPacket* op, ConfigurationPacket* cp)
             read(fd, data, 1);
             checksum ^= *data;
             cp->pin_num = *data;
-            for (i = 0; i < MAX_LEN_PIN_NAME; i++) {
+            for (i = 0; i < MAX_LEN_NAME; i++) {
                 read(fd, data, 1);
                 checksum ^= *data;
                 cp->pin_name[i] = *data;

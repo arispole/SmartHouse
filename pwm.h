@@ -1,6 +1,3 @@
-#include <stdint.h>
-#include <stdbool.h> 
-
 // pwm enabled structure
 typedef struct {
 	uint8_t pin_num;

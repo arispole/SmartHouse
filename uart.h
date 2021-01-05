@@ -1,21 +1,19 @@
-#include <stdint.h>
+#define UART_BUFFER_SIZE 100
 
-struct UART;
+typedef struct UARTI UART;
 
-struct UART* UART_init();
+UART* UART_init(void);
 
-void UART_putChar(struct UART* uart, uint8_t c);
+void UART_putChar(UART* uart, uint8_t c);
 
-uint8_t UART_getChar(struct UART* uart);
+uint8_t UART_getChar(UART* uart);
 
-int UART_rxBufferSize(struct UART* uart);
+int UART_rxBufferSize(UART* uart);
 
-int UART_txBufferSize(struct UART* uart);
+int UART_txBufferSize(UART* uart);
 
-int UART_rxBufferFull(struct UART* uart);
+int UART_rxBufferFull(UART* uart);
 
-int UART_rxBufferFree(struct UART* uart);
+int UART_rxBufferFree(UART* uart);
 
-int UART_txBufferFull(struct UART* uart);
-
-
+int UART_txBufferFull(UART* uart);

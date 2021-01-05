@@ -7,7 +7,7 @@ typedef struct {
 typedef struct {
     uint8_t command;
     uint8_t pin_num;
-    uint8_t pin_name[MAX_LEN_PIN_NAME];
+    uint8_t pin_name[MAX_LEN_NAME];
 } ConfigurationPacket;
 
 typedef struct {

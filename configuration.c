@@ -14,12 +14,12 @@
 
 struct Pins {
     uint8_t Num;
-    char Name[MAX_LEN_PIN_NAME];
+    char Name[MAX_LEN_NAME];
 };
 
 typedef struct {
     bool isConfigured;
-    char deviceName[MAX_LEN_DEV_NAME];
+    char deviceName[MAX_LEN_NAME];
     Pins pinNames[BLOC_PIN];
 } Configuration;
 
@@ -74,6 +74,7 @@ int getPinByName(char *name){
     if (i < NUM_PIN) numPin = config_dev.pinNames[i].Num;
     return numPin;
 }
+
 
 int getOldConfig(cbuf_handle_t tx_buf) {
 
@@ -146,7 +147,7 @@ void configPin (uint8_t k, cbuf_handle_t tx_buf) {
             pin = atoi(token);
             i = 0;
             while (config_dev.pinNames[k*BLOC_PIN+i].Num != pin && i <= (BLOC_PIN-1)) ++i;
-            if (i = BLOC_PIN) {
+            if (i == BLOC_PIN) {
                 printf("Pin non disponibile\n");
                 continue;
             }
@@ -156,8 +157,8 @@ void configPin (uint8_t k, cbuf_handle_t tx_buf) {
                 printf("[numero-pin nome-pin]\n");
                 continue;
             }
-            if (strlen(token) > MAX_LEN_PIN_NAME) { 
-                printf("nome Pin deve essere <= %d\n", MAX_LEN_PIN_NAME);
+            if (strlen(token) > MAX_LEN_NAME) { 
+                printf("nome Pin deve essere <= %d\n", MAX_LEN_NAME);
                 continue;
             }
             if (getPinByName(token)!= -1) {
@@ -165,10 +166,10 @@ void configPin (uint8_t k, cbuf_handle_t tx_buf) {
                 continue;
             }
             else {
-                setPinName(i, token);
+                setPinName(k*BLOC_PIN+i, token);
                 cp.command = conf;
                 cp.pin_num = i;
-                memset(cp.pin_name, 0, MAX_LEN_PIN_NAME);
+                memset(cp.pin_name, 0, MAX_LEN_NAME);
                 memcpy(cp.pin_name, token, sizeof(token)-1);
                 circular_buf_put(tx_buf, SOH);
                 data = (uint8_t*) &cp;
@@ -207,17 +208,18 @@ int configure(cbuf_handle_t tx_buf) {
         res = readline(NULL);
         if (!strcmp(res,"n")) nomedev = false;
     }
+    
     stop = 0;
     while (!stop && nomedev){
         printf("Inserisci il nome del device:\n");
         name = readline(NULL);
-        if (strlen(name) > MAX_LEN_DEV_NAME)
-                printf("nome device deve essere <= %d\n", MAX_LEN_DEV_NAME);
+        if (strlen(name) > MAX_LEN_NAME)
+                printf("nome device deve essere <= %d\n", MAX_LEN_NAME);
         else {
             setDeviceName(name);
             cp.command = conf;
             cp.pin_num = 24;
-            memset(cp.pin_name, 0, MAX_LEN_PIN_NAME);
+            memset(cp.pin_name, 0, MAX_LEN_NAME);
             memcpy(cp.pin_name, name, sizeof(name)-1);
             circular_buf_put(tx_buf, SOH);
             data = (uint8_t*) &cp;
