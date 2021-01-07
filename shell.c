@@ -161,7 +161,7 @@ int shellFunction() {
                 while (!printed);
                 printed = 0;
             } 
-//            usleep(10000);
+            usleep(10000);
         }
             else 
             {

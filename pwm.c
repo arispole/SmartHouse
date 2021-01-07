@@ -125,8 +125,12 @@ void PWM_init(void) {
 }
 
 int led_ON(uint8_t pin_num) {
-
-    pwm_enabled_array[pin_num].is_enabled = false;
+    
+    int i = 0;
+    while (pwm_enabled_array[i].pin_num != pin_num) ++i;
+    
+    if (i < BLOC_PIN) pwm_enabled_array[i].is_enabled = false;
+    else return -1;
 
     // TO DO -> check pin boundaries 
     switch (pin_num) {
@@ -168,7 +172,11 @@ int led_ON(uint8_t pin_num) {
 
 int led_OFF(uint8_t pin_num) {
 
-    pwm_enabled_array[pin_num].is_enabled = false;
+    int i = 0;
+    while (pwm_enabled_array[i].pin_num != pin_num) ++i;
+    
+    if (i < BLOC_PIN) pwm_enabled_array[i].is_enabled = false;
+    else return -1;
 
     // TO DO -> check pin boundaries 
     switch (pin_num) {
@@ -209,14 +217,18 @@ int led_OFF(uint8_t pin_num) {
 }
 
 int led_DIMMER(uint8_t pin_num, uint8_t intensity) {
-
-    pwm_enabled_array[pin_num].is_enabled = true;
+    
+    int i = 0;
+    while (pwm_enabled_array[i].pin_num != pin_num) ++i;
+    
+    if (i < BLOC_PIN) pwm_enabled_array[i].is_enabled = true;
+    else return -1;
 
     // TO DO -> check pin and intensity boundaries 
     switch (pin_num) {
       case 2:
         TCCR3A |= TCCR3A_COM3B_ENABLE_MASK;         //enable OCRn
-        OCR3BL = 255 - ((int) intensity * 255)/100;
+        OCR3BL = 255 - (intensity * 255)/100;
         break;
       case 3:
         TCCR3A |= TCCR3A_COM3C_ENABLE_MASK;
@@ -257,11 +269,13 @@ uint8_t get_intensity(uint8_t pin_num) {
   int i = 0;
 
   while (pwm_enabled_array[i].pin_num != pin_num) ++i;
-    if (i < BLOC_PIN) isEnabled = pwm_enabled_array[i].is_enabled;
-    else return 0;
+  
+  if (i < BLOC_PIN) isEnabled = pwm_enabled_array[i].is_enabled;
+  else return -1;
+
   switch (pin_num) {
       case 2:
-        if (isEnabled) intensity = 20; // intensity = (255 - OCR3BL) * 100/255;     
+        if (isEnabled) intensity = (255 - OCR3BL) * 100/255;     
         else intensity = (PORTE&mask2) != 0 ? 100 : 0;
         break;
       case 3:

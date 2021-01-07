@@ -20,7 +20,7 @@ struct Pins {
 typedef struct {
     bool isConfigured;
     char deviceName[MAX_LEN_NAME];
-    Pins pinNames[BLOC_PIN];
+    Pins pinNames[NUM_PIN];
 } Configuration;
 
 Configuration config_dev;
@@ -29,7 +29,7 @@ void configInit() {
     config_dev.isConfigured = false;
     strcpy(config_dev.deviceName, "");
     uint8_t i;
-    for (i = 0; i < NUM_PIN; i++){
+    for (i = 0; i < NUM_PIN; i++) {
         strcpy(config_dev.pinNames[i].Name, "");
         if (i <= 7) config_dev.pinNames[i].Num = i;
         else if (i >=  8 && i <=  9) config_dev.pinNames[i].Num = i -  6;
@@ -75,7 +75,6 @@ int getPinByName(char *name){
     return numPin;
 }
 
-
 int getOldConfig(cbuf_handle_t tx_buf) {
 
     //ask for old configuration (if not present, it returns a nack)
@@ -88,8 +87,7 @@ int getOldConfig(cbuf_handle_t tx_buf) {
     uint8_t *data = (uint8_t*) &rc;
     uint8_t checksum = 0;
     size_t size = sizeof(ControlPacket);
-    while (size) 
-    {
+    while (size) {
         circular_buf_put(tx_buf, *data);
         checksum ^= *data;
         --size;
@@ -110,8 +108,7 @@ int resetConfig(cbuf_handle_t tx_buf) {
     uint8_t *data = (uint8_t*) &rc;
     uint8_t checksum = 0;
     size_t size = sizeof(ControlPacket);
-    while (size) 
-    {
+    while (size) {
         circular_buf_put(tx_buf, *data);
         checksum ^= *data;
         --size;
@@ -168,20 +165,19 @@ void configPin (uint8_t k, cbuf_handle_t tx_buf) {
             else {
                 setPinName(k*BLOC_PIN+i, token);
                 cp.command = conf;
-                cp.pin_num = i;
+                cp.pin_num = k*BLOC_PIN+i;
                 memset(cp.pin_name, 0, MAX_LEN_NAME);
-                memcpy(cp.pin_name, token, sizeof(token)-1);
+                memcpy(cp.pin_name, token, strlen(token));
                 circular_buf_put(tx_buf, SOH);
                 data = (uint8_t*) &cp;
                 checksum = 0;
                 s = size;
-                while (s) 
-                {
+                while (s) {
                     circular_buf_put(tx_buf, *data);
                     checksum ^= *data;
                     --s;
                     ++data;
-                }
+                } 
                 circular_buf_put(tx_buf, checksum);
                 circular_buf_put(tx_buf, EOT);
             }
@@ -220,13 +216,12 @@ int configure(cbuf_handle_t tx_buf) {
             cp.command = conf;
             cp.pin_num = 24;
             memset(cp.pin_name, 0, MAX_LEN_NAME);
-            memcpy(cp.pin_name, name, sizeof(name)-1);
+            memcpy(cp.pin_name, name, strlen(name));
             circular_buf_put(tx_buf, SOH);
             data = (uint8_t*) &cp;
             checksum = 0;
             s = size;
-            while (s) 
-            {
+            while (s) {
                 circular_buf_put(tx_buf, *data);
                 checksum ^= *data;
                 --s;
@@ -261,10 +256,10 @@ void printConfiguration() {
     printf("\nNOME DEVICE: %s\n\n", config_dev.deviceName);
 
     printf("  PIN ANALOGICI %19s     PIN DIGITALI/SWITCH/DIMMER %7s    INPUT\n\n"," "," ");
-    for (i=0; i < BLOC_PIN; i++){
+    for (i=0; i < BLOC_PIN; i++) {
         printf("  PIN %3d --> %16s          PIN %3d --> %16s          PIN %3d --> %16s\n", config_dev.pinNames[i].Num, config_dev.pinNames[i].Name,
-                                                                                           config_dev.pinNames[i+8].Num, config_dev.pinNames[i+8].Name,
-                                                                                           config_dev.pinNames[i+16].Num, config_dev.pinNames[i+16].Name);
+                                                                                           config_dev.pinNames[i+BLOC_PIN].Num, config_dev.pinNames[i+BLOC_PIN].Name,
+                                                                                           config_dev.pinNames[i+2*BLOC_PIN].Num, config_dev.pinNames[i+2*BLOC_PIN].Name);
     }
     printf("\n\n");
 }

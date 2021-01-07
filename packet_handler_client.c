@@ -155,7 +155,7 @@ void* packetHandlerFunction() {
             configuration_phase = 0;
             configuration_found = 1;
         }
-//        usleep(1000000);
+        usleep(1000000);
     }
     free(data);
     pthread_exit(NULL);
