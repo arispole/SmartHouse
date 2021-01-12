@@ -15,37 +15,35 @@
 #include "packet_handler_client.h"
 
 extern int run, fd, printed, configuration_phase, configuration_found;
-extern cbuf_handle_t tx_buf;
+//extern cbuf_handle_t tx_buf;
 
-void print_packet(OperationPacket* op) 
+void print_packet(OperationPacket* op)
 {
-    if (op->command == input)
+    uint8_t temp;
+    double R, tempK1, tempk2;
+
+     if (op->command == input)
     {
         if (op->pin_num > 45 && op->pin_num < 54) 
         {
             printf("\nLettura %s\n", getPinName(op->pin_num, 2));
+            printf("Valore: %d\n\n", (int) op->intensity);
         }
-        else 
+        else
         {
             printf("\nLettura %s\n", getPinName(op->pin_num, 0));
-            uint8_t temp = op->intensity;
-            double tempK = (10000.0 *1024.0/temp -10000.0);
-			tempK= 3950 /log(tempK/(10000.0*pow(M_E,(-3950/298.15))));
-//            tempK= 1 / (0.001129148 + (0.000234125 + (0.0000000876741 * tempK * tempK )) * tempK );
-            float tempC = tempK - 273.15;
-            printf("Temperatura: %2.2f\n\n", tempC);
+            printf("Valore: %4.2f\n\n", (float) op->intensity*5/255);
         }
-        printf("Valore: %d\n\n", (int) op->intensity);
     }
-    if (op->command == status)
+    else //status
     {
-        printf("\nStato %s\n", getPinName(op->pin_num, 3));
+        printf("\nStato %s\n", getPinName(op->pin_num, 1));
         printf("Luce %s\n", (op->intensity!=0)? "accesa" : "spenta");
-        printf("Intensità %d%%\n\n", (int) op->intensity);
+        printf("Intensità %d\n\n", (int) round((float) op->intensity*100/255));
     }
 }
 
-int send_packet(uint8_t* data) 
+int send_packet(uint8_t* data, cbuf_handle_t tx_buf) 
 {
     while (circular_buf_empty(tx_buf)) {
         if (!run) return -1;
@@ -108,7 +106,7 @@ int receive_packet(uint8_t* data, OperationPacket* op, ConfigurationPacket* cp)
     return ret;
 }
 
-void* packetHandlerFunction() {
+void* packetHandlerFunction(void* tb) {
 
     OperationPacket op_struct = {
         .command = 0,
@@ -128,11 +126,13 @@ void* packetHandlerFunction() {
 
     uint8_t* data = malloc (sizeof(uint8_t));
 
+    cbuf_handle_t tx_buf = tb;
+
     while (run)
     {
         int retval;
         save_current_head_pointer(tx_buf);
-        retval = send_packet(data);
+        retval = send_packet(data, tx_buf);
         if (retval == -1) continue;
         retval = receive_packet(data, op, cp);
         if (retval == -1) {
@@ -155,7 +155,6 @@ void* packetHandlerFunction() {
             configuration_phase = 0;
             configuration_found = 1;
         }
-        usleep(1000000);
     }
     free(data);
     pthread_exit(NULL);

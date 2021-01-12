@@ -3,10 +3,11 @@
 typedef struct {
 	const char* name;
 	Command command;
+	const char* description;
 } CommandName;
 
 void printCommand();
 
 Command findCommand(char *command);
 
-int shellFunction();
+int shellFunction(cbuf_handle_t tx_buf);

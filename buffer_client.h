@@ -1,14 +1,21 @@
 #define BUFFER_MAX_SIZE 256
 
 // Opaque circular buffer structure
-typedef struct circul_buf_t circular_buf_t;
+typedef struct {
+	uint8_t* buffer;
+	size_t head;
+	size_t temp_head;
+	size_t tail;
+	size_t max; 
+	bool full;
+} circular_buf_t;
 
 // Handle type, the way users interact with the API
 typedef circular_buf_t* cbuf_handle_t;
 
 /// Pass in a storage buffer and size 
 /// Returns a circular buffer handle
-cbuf_handle_t circular_buf_init(uint8_t* buffer, size_t size);
+cbuf_handle_t circular_buf_init();
 
 /// Free a circular buffer structure.
 /// Does not free data buffer; owner is responsible for that

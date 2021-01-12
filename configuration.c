@@ -67,12 +67,19 @@ char* getDeviceName() {
     return "";
 }
 
-int getPinByName(char *name){
-    uint8_t i = 0; 
-    int numPin = -1;
+numPin getPinByName(char *name){
+    
+    numPin numpin;
+    int i = 0;
+
+    numpin.num = -1;
+    numpin.ind = -1;
     while (i < NUM_PIN && strcmp(name,config_dev.pinNames[i].Name)) ++i;
-    if (i < NUM_PIN) numPin = config_dev.pinNames[i].Num;
-    return numPin;
+    if (i < NUM_PIN) {
+        numpin.ind = i;
+        numpin.num = config_dev.pinNames[i].Num;
+    }
+    return numpin;
 }
 
 int getOldConfig(cbuf_handle_t tx_buf) {
@@ -128,10 +135,11 @@ void configPin (uint8_t k, cbuf_handle_t tx_buf) {
     uint8_t checksum;
     const size_t size = sizeof(ConfigurationPacket);
     size_t s;
+    numPin numpin;
 
     stop = 0;
     while (!stop) {
-        printf("Inserisci il numero del pin e il nome [quit per terminare]\n");
+        printf("Inserisci il numero del pin e il nome, [quit] per terminare\n");
         token = readline(NULL);
         if (strlen(token) == 0 || !memcmp(token, " ", 1))
             continue;
@@ -154,11 +162,12 @@ void configPin (uint8_t k, cbuf_handle_t tx_buf) {
                 printf("[numero-pin nome-pin]\n");
                 continue;
             }
-            if (strlen(token) > MAX_LEN_NAME) { 
-                printf("nome Pin deve essere <= %d\n", MAX_LEN_NAME);
+            if (strlen(token) > MAX_LEN_NAME - 1) { 
+                printf("nome Pin deve essere <= %d\n", MAX_LEN_NAME - 1);
                 continue;
             }
-            if (getPinByName(token)!= -1) {
+            numpin = getPinByName(token);
+            if (numpin.num != -1) {
                 printf("nome già utilizzato\n");
                 continue;
             }
@@ -209,8 +218,8 @@ int configure(cbuf_handle_t tx_buf) {
     while (!stop && nomedev){
         printf("Inserisci il nome del device:\n");
         name = readline(NULL);
-        if (strlen(name) > MAX_LEN_NAME)
-                printf("nome device deve essere <= %d\n", MAX_LEN_NAME);
+        if (strlen(name) > MAX_LEN_NAME - 1)
+                printf("nome device deve essere <= %d\n", MAX_LEN_NAME - 1);
         else {
             setDeviceName(name);
             cp.command = conf;
@@ -240,7 +249,7 @@ int configure(cbuf_handle_t tx_buf) {
     printf(" Pin disponibili:   PIN DIGITALI/SWITCH/DIMMER\n");
     printf("                    2 - 3 - 5 - 6 - 7 - 8 - 11 - 12\n\n");
     configPin(1, tx_buf);
-    printf(" Pin disponibili:   INPUT\n");
+    printf(" Pin disponibili:   PIN DIGITALI INPUT\n");
     printf("                    46 - 47 - 48 - 49 - 50 - 51 - 52 - 53\n\n");
     configPin(2, tx_buf);
     config_dev.isConfigured = true;

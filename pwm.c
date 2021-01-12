@@ -6,12 +6,12 @@
 #include "constants.h"
 
 // pin masks
-const uint8_t mask2 = (1 << 4);
-const uint8_t mask3 = (1 << 5);
-const uint8_t mask5 = (1 << 3);
-const uint8_t mask6 = (1 << 3);
-const uint8_t mask7 = (1 << 4);
-const uint8_t mask8 = (1 << 5);
+const uint8_t mask2  = (1 << 4);
+const uint8_t mask3  = (1 << 5);
+const uint8_t mask5  = (1 << 3);
+const uint8_t mask6  = (1 << 3);
+const uint8_t mask7  = (1 << 4);
+const uint8_t mask8  = (1 << 5);
 const uint8_t mask11 = (1 << 5);
 const uint8_t mask12 = (1 << 6);
 
@@ -46,42 +46,34 @@ const uint8_t mask12 = (1 << 6);
 
 PWM_Enabled pwm_enabled_array[] = 
 {   
-    // pin 2
     {
         .pin_num = 2,
         .is_enabled = false,
     },
-    // pin 3
     {
         .pin_num = 3,
         .is_enabled = false,
     },
-    // pin 5
     {
         .pin_num = 5,
         .is_enabled = false,
     },
-    // pin 6
     {
         .pin_num = 6,
         .is_enabled = false,
     },
-    // pin 7
     {
         .pin_num = 7,
         .is_enabled = false,
     },
-    // pin 8
     {
         .pin_num = 8,
         .is_enabled = false,
     },
-    // pin 11
     {
         .pin_num = 11,
         .is_enabled = false,
     },
-    // pin 12
     {
         .pin_num = 12,
         .is_enabled = false,
@@ -128,11 +120,8 @@ int led_ON(uint8_t pin_num) {
     
     int i = 0;
     while (pwm_enabled_array[i].pin_num != pin_num) ++i;
-    
     if (i < BLOC_PIN) pwm_enabled_array[i].is_enabled = false;
     else return -1;
-
-    // TO DO -> check pin boundaries 
     switch (pin_num) {
       case 2:
         TCCR3A = TCCR3A_MASK;           //disable OCRn
@@ -173,12 +162,10 @@ int led_ON(uint8_t pin_num) {
 int led_OFF(uint8_t pin_num) {
 
     int i = 0;
-    while (pwm_enabled_array[i].pin_num != pin_num) ++i;
     
+    while (pwm_enabled_array[i].pin_num != pin_num) ++i;
     if (i < BLOC_PIN) pwm_enabled_array[i].is_enabled = false;
     else return -1;
-
-    // TO DO -> check pin boundaries 
     switch (pin_num) {
       case 2:
         TCCR3A = TCCR3A_MASK;             //disable OCRn
@@ -193,23 +180,23 @@ int led_OFF(uint8_t pin_num) {
         PORTE &= ~ mask5;
         break;
       case 6:
-        TCCR3A = TCCR3A_MASK;
+        TCCR4A = TCCR4A_MASK;
         PORTH &= ~ mask6;
         break;
       case 7:
-        TCCR3A = TCCR3A_MASK;
+        TCCR4A = TCCR4A_MASK;
         PORTH &= ~ mask7;
         break;
       case 8:
-        TCCR3A = TCCR3A_MASK;
+        TCCR4A = TCCR4A_MASK;
         PORTH &= ~ mask8;
         break;
       case 11:
-        TCCR3A = TCCR3A_MASK;
+        TCCR1A = TCCR1A_MASK;
         PORTB &= ~ mask11;
         break;
       case 12:
-        TCCR3A = TCCR3A_MASK;
+        TCCR1A = TCCR1A_MASK;
         PORTB &= ~ mask12;
         break; 
     }
@@ -219,44 +206,42 @@ int led_OFF(uint8_t pin_num) {
 int led_DIMMER(uint8_t pin_num, uint8_t intensity) {
     
     int i = 0;
+
     while (pwm_enabled_array[i].pin_num != pin_num) ++i;
-    
     if (i < BLOC_PIN) pwm_enabled_array[i].is_enabled = true;
     else return -1;
-
-    // TO DO -> check pin and intensity boundaries 
     switch (pin_num) {
       case 2:
         TCCR3A |= TCCR3A_COM3B_ENABLE_MASK;         //enable OCRn
-        OCR3BL = 255 - (intensity * 255)/100;
+        OCR3BL = 255 - intensity;
         break;
       case 3:
         TCCR3A |= TCCR3A_COM3C_ENABLE_MASK;
-        OCR3CL = 255 - (intensity * 255)/100;
+        OCR3CL = 255 - intensity;
         break;
       case 5:
         TCCR3A |= TCCR3A_COM3A_ENABLE_MASK;
-        OCR3AL = 255 - (intensity * 255)/100;
+        OCR3AL = 255 - intensity;
         break;
       case 6:
         TCCR4A |= TCCR4A_COM4A_ENABLE_MASK;
-        OCR4AL = 255 - (intensity * 255)/100;
+        OCR4AL = 255 - intensity;
         break;
       case 7:
         TCCR4A |= TCCR4A_COM4B_ENABLE_MASK;
-        OCR4BL = 255 - (intensity * 255)/100;
+        OCR4BL = 255 - intensity;
         break;
       case 8:
         TCCR4A |= TCCR4A_COM4C_ENABLE_MASK;
-        OCR4CL = 255 - (intensity * 255)/100;
+        OCR4CL = 255 - intensity;
         break;
       case 11:
         TCCR1A |= TCCR1A_COM1A_ENABLE_MASK;
-        OCR1AL = 255 - (intensity * 255)/100;
+        OCR1AL = 255 - intensity;
         break;
       case 12:
         TCCR1A |= TCCR1A_COM1B_ENABLE_MASK;
-        OCR1BL = 255 - (intensity * 255)/100;
+        OCR1BL = 255 - intensity;
         break;
     }
     return 0;
@@ -269,42 +254,40 @@ uint8_t get_intensity(uint8_t pin_num) {
   int i = 0;
 
   while (pwm_enabled_array[i].pin_num != pin_num) ++i;
-  
   if (i < BLOC_PIN) isEnabled = pwm_enabled_array[i].is_enabled;
   else return -1;
-
   switch (pin_num) {
       case 2:
-        if (isEnabled) intensity = (255 - OCR3BL) * 100/255;     
+        if (isEnabled) intensity = (255 - OCR3BL);     
         else intensity = (PORTE&mask2) != 0 ? 100 : 0;
         break;
       case 3:
-        if (isEnabled) intensity = (255 - OCR3CL) * 100/255;     
-        else intensity = ((PORTE&mask3) == 0) * 100;
+        if (isEnabled) intensity = (255 - OCR3CL);     
+        else intensity = (PORTE&mask3) != 0 ? 100 : 0;
         break;
       case 5:
-        if (isEnabled) intensity = (255 - OCR3AL) * 100/255;     
-        else intensity = ((PORTE&mask5) == 0) * 100;
+        if (isEnabled) intensity = (255 - OCR3AL);     
+        else intensity = (PORTE&mask5) != 0 ? 100 : 0;
         break;
       case 6:
-        if (isEnabled) intensity = (255 - OCR4AL) * 100/255;     
-        else intensity = ((PORTH&mask6) == 0) * 100;
+        if (isEnabled) intensity = (255 - OCR4AL);     
+        else intensity = (PORTH&mask6) != 0 ? 100 : 0;
         break;
       case 7:
-        if (isEnabled) intensity = (255 - OCR4BL) * 100/255;     
-        else intensity = ((PORTH&mask7) == 0) * 100;
+        if (isEnabled) intensity = (255 - OCR4BL);     
+        else intensity = (PORTH&mask7) != 0 ? 100 : 0;
         break;
       case 8:
-        if (isEnabled) intensity = (255 - OCR4CL) * 100/255;     
-        else intensity = ((PORTH&mask8) == 0) * 100;
+        if (isEnabled) intensity = (255 - OCR4CL);     
+        else intensity = (PORTH&mask8) != 0 ? 100 : 0;
         break;
       case 11:
-        if (isEnabled) intensity = (255 - OCR1AL) * 100/255;     
-        else intensity = ((PORTB&mask11) == 0) * 100;
+        if (isEnabled) intensity = (255 - OCR1AL);     
+        else intensity = (PORTB&mask11) != 0 ? 100 : 0;
         break;
       case 12:
-        if (isEnabled) intensity = (255 - OCR1BL) * 100/255;     
-        else intensity = ((PORTB&mask12) == 0) * 100;
+        if (isEnabled) intensity = (255 - OCR1BL);     
+        else intensity = (PORTB&mask12) != 0 ? 100 : 0;
         break;
     }
   return intensity;

@@ -1,5 +1,10 @@
 typedef struct Pins Pins;
 
+typedef struct {
+    int num;
+    int ind;
+} numPin;
+
 void configInit();
 
 void set_isConfigured();
@@ -12,7 +17,7 @@ void setDeviceName(char* name);
 
 char* getDeviceName();
 
-int getPinByName(char* name);
+numPin getPinByName(char* name);
 
 int getOldConfig(cbuf_handle_t tx_buf);
 

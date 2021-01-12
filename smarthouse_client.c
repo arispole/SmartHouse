@@ -18,20 +18,22 @@
 #include "packet_handler_client.h"
 
 int run, fd, printed, configuration_phase, configuration_found;
-cbuf_handle_t tx_buf;
-uint8_t *tx_buffer;
 
 int main()
 {
+    cbuf_handle_t tx_buf;
+    void* tb;
+
     fd = s_open("/dev/ttyACM0");
     if (fd < 0) return 0;
     s_set_attributes(fd);
 
-    tx_buffer  = malloc(BUFFER_MAX_SIZE * sizeof(uint8_t));
-    tx_buf = circular_buf_init(tx_buffer, BUFFER_MAX_SIZE);
-   
-    pthread_t packetHandler;
+    usleep(1000000);
 
+    tx_buf = circular_buf_init();
+    
+    tb = tx_buf;
+    
     run = 1;
     printed = 0;
 
@@ -40,9 +42,9 @@ int main()
     configuration_phase = 1;
     configuration_found = 0;
 
-    pthread_create (&packetHandler, NULL, packetHandlerFunction, NULL);
+    pthread_t packetHandler;
 
-    usleep(1000000);
+    pthread_create (&packetHandler, NULL, packetHandlerFunction, tb);
 
     getOldConfig(tx_buf);
 
@@ -55,11 +57,10 @@ int main()
     
     printCommand();
 
-    shellFunction();
+    shellFunction(tx_buf);
 
     pthread_join(packetHandler, NULL);
 
-    free(tx_buffer);
     circular_buf_free(tx_buf);
 
     s_close(fd);

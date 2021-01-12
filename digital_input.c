@@ -5,12 +5,12 @@
 
 const uint8_t mask46 = (1<<3);
 const uint8_t mask47 = (1<<2);
-const uint8_t mask48 = 1;
-const uint8_t mask49 = 0;
+const uint8_t mask48 = (1<<1);
+const uint8_t mask49 = (1<<0);
 const uint8_t mask50 = (1<<3);
 const uint8_t mask51 = (1<<2);
-const uint8_t mask52 = 1;
-const uint8_t mask53 = 0;
+const uint8_t mask52 = (1<<1);
+const uint8_t mask53 = (1<<0);
 
 
 void digInput_Init(void){
@@ -22,12 +22,9 @@ void digInput_Init(void){
 
 uint8_t read_digInput(uint8_t pin) {
     
-        uint8_t value;
+    uint8_t value;
 
-    // check if pin is out of boundaries
-    if (pin < 46 || pin > 53) {
-        return -1;
-    }
+    value = -1;
     switch (pin)
     {
     case 46:

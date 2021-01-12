@@ -6,17 +6,18 @@
 #include <stdbool.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <math.h> 
 
 #include "constants.h"
 #include "commands.h"
+#include "buffer_client.h"
 #include "shell.h"
 #include "packets.h"
-#include "buffer_client.h"
 #include "configuration.h"
 
 
 
-extern cbuf_handle_t tx_buf;
+// extern cbuf_handle_t tx_buf;
 extern int printed,run;
 
 CommandName commandNames []= 
@@ -24,34 +25,42 @@ CommandName commandNames []=
     {
         .name = "accendi",
         .command = ledOn,
+        .description = "[accendi] [nome pin]"
     },
     {
         .name = "spegni",
         .command = ledOff,
+        .description = "[spegni] [nome pin]"
     },
     {
         .name = "intensità",
         .command = dimmer,
+        .description = " [intensità] [valore: 0-100] [nome pin] (regola l'intensità su una scala da 0 a 100)"
     },
     {
         .name = "leggi",
         .command = input,
+        .description = "[leggi] [nome pin]                     (legge lo stato 0/1 del pin digitale input o la tensione del pin analogico da 0 a 5.00 v)"
     },
     {
         .name = "stato",
         .command = status,
+        .description = "[stato] [nome pin]                     (legge lo stato acceso/spento del pin digitale e la sua intensità)"
     },
     {
         .name = "leggiconfig",
         .command = readConfig,
+        .description = "[leggiconfig]                          (stampa l'elenco dei pin con i rispettivi nomi)"
     },
     {
         .name = "resettaconfig",
         .command = resetConf,
+        .description = "[resettaconfig]                        (annulla nome device e nomi pin)"
     },
     {
         .name = "config",
         .command = conf,
+        .description = "[config]                               (entra in modifica configurazione permettendo il cambiamento/aggiunta dei nomi)"
     }
 };
 
@@ -59,7 +68,7 @@ void printCommand() {
     printf("LISTA COMANDI: \n\n");
     int i = 0;
     for (i=0; i < NUM_COMMAND_USERS; i++){
-        printf(" %s\n", commandNames[i].name);
+        printf("  %-15s %s\n", commandNames[i].name, commandNames[i].description);
     }
     printf("\n\n");
 }
@@ -74,9 +83,10 @@ Command findCommand(char *command) {
     return 0;
 }
 
-int shellFunction() {
+int shellFunction(cbuf_handle_t tx_buf) {
 
-    int pin, intensity;
+    numPin numpin;
+    int intensity;
     Command command;
     char* token;
     OperationPacket op;
@@ -87,7 +97,7 @@ int shellFunction() {
 
     while (run) 
     {
-        printf("Inserisci un comando: ('quit' per uscire, 'help' per lista comandi)\n");
+        printf("Inserisci un comando: ([quit] per uscire, [help] per lista comandi)\n");
         token = readline(NULL);
         if (strlen(token) == 0 || !memcmp(token, " ", 1))
             continue;
@@ -110,7 +120,6 @@ int shellFunction() {
             continue;
         }
         if (command == readConfig) {
-            getOldConfig(tx_buf);
             printConfiguration();
             continue;
         }
@@ -122,8 +131,8 @@ int shellFunction() {
         if (command == dimmer) {   
             token = strtok(NULL, " ");
             if (token != NULL) {
-                intensity = atoi(token);
-                if (intensity < 0 || intensity > 100) {
+                intensity = (int) round((float) atoi(token) * 255 / 100);
+                if (intensity < 0 || intensity > 255) {
                     printf("Intensità non corretta\n");
                     continue;
                 }
@@ -136,13 +145,21 @@ int shellFunction() {
         else intensity = 0;
         token = strtok(NULL, " ");
         if (token != NULL) {
-            pin = getPinByName(token);
-            if (pin < 0) {
+            numpin = getPinByName(token);
+            if (numpin.num < 0) {
                 printf("Impossibile trovare il nome del pin\n");
                 continue;
             }
+            else if ((numpin.ind < 8 || numpin.ind > 15) && (command == dimmer || command == status || command == ledOn || command == ledOff)) {
+                printf("Il pin non è un pin digitale/switch/dimmer\n");
+                continue;
+            }
+            else if (numpin.ind >= 8 && numpin.ind <= 15 && command == input) {
+                printf("Il pin non è un pin analogico o un pin digitale input\n");
+                continue;
+            }
             op.command = command;
-            op.pin_num = pin;
+            op.pin_num = numpin.num;
             op.intensity = intensity;
             circular_buf_put(tx_buf, SOH);
             data = (uint8_t*) &op;
@@ -161,13 +178,11 @@ int shellFunction() {
                 while (!printed);
                 printed = 0;
             } 
-            usleep(10000);
         }
-            else 
-            {
-                printf("Comando incompleto\n");
-                continue;
-            }
+        else {
+            printf("Comando incompleto\n");
+            continue;
+        }
     }
     return 0;
 }
