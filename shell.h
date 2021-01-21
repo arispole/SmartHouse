@@ -1,4 +1,4 @@
-#define NUM_COMMAND_USERS 8 
+#define NUM_COMMAND_USERS 8
 
 typedef struct {
 	const char* name;
@@ -10,4 +10,4 @@ void printCommand();
 
 Command findCommand(char *command);
 
-int shellFunction(cbuf_handle_t tx_buf);
+int shellFunction();

@@ -1,24 +1,22 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <stdint.h>
-#include <stdbool.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <math.h> 
+#include <stdbool.h>
 
 #include "constants.h"
 #include "commands.h"
-#include "buffer_client.h"
-#include "shell.h"
 #include "packets.h"
+#include "shell.h"
 #include "configuration.h"
+#include "packet_handler_client.h"
 
-
-
-// extern cbuf_handle_t tx_buf;
-extern int printed,run;
+extern OperationPacket op;
+extern ConfigurationPacket cp;
+extern Configuration config_dev;
 
 CommandName commandNames []= 
 {
@@ -83,22 +81,28 @@ Command findCommand(char *command) {
     return 0;
 }
 
-int shellFunction(cbuf_handle_t tx_buf) {
+int shellFunction() {
 
     numPin numpin;
     int intensity;
     Command command;
     char* token;
-    OperationPacket op;
     uint8_t* data = (uint8_t*) &op;
-    uint8_t checksum;
     size_t size = sizeof(OperationPacket);
-    size_t s;
+    uint8_t run;
+    int ret = 0;
 
+    char *line = NULL;
+    size_t len = 0;
+
+    run = 1;
     while (run) 
     {
         printf("Inserisci un comando: ([quit] per uscire, [help] per lista comandi)\n");
-        token = readline(NULL);
+        getline(&line, &len, stdin);
+        char *newline = strchr(line, '\n' ); 
+        if ( newline ) *newline = 0;
+        token = line;
         if (strlen(token) == 0 || !memcmp(token, " ", 1))
             continue;
         token = strtok(token, " ");
@@ -116,16 +120,17 @@ int shellFunction(cbuf_handle_t tx_buf) {
             continue;
         }
         if (command == conf) {
-            configure(tx_buf);
+            configure();
             continue;
         }
         if (command == readConfig) {
-            printConfiguration();
+            if (config_dev.isConfigured) printConfiguration();
+            else printf("\nDevice non configurata\n\n");
             continue;
         }
         if (command == resetConf) {
-            resetConfig(tx_buf);
-            configInit();
+            if (resetConfig() == -1) {ret = -1; run = 0;}
+            else configInit();
             continue;
         }
         if (command == dimmer) {   
@@ -141,8 +146,9 @@ int shellFunction(cbuf_handle_t tx_buf) {
                 printf("Comando incompleto\n");
                 continue;
             }
-        } 
+        }
         else intensity = 0;
+        // accendi, spegni, intensità, leggi, stato 
         token = strtok(NULL, " ");
         if (token != NULL) {
             numpin = getPinByName(token);
@@ -161,28 +167,19 @@ int shellFunction(cbuf_handle_t tx_buf) {
             op.command = command;
             op.pin_num = numpin.num;
             op.intensity = intensity;
-            circular_buf_put(tx_buf, SOH);
-            data = (uint8_t*) &op;
-            checksum = 0;
-            s = size;
-            while (s) 
-            {
-                circular_buf_put(tx_buf, *data);
-                checksum ^= *data;
-                --s;
-                ++data;
-            }
-            circular_buf_put(tx_buf, checksum);
-            circular_buf_put(tx_buf, EOT);
-            if (command == input || command == status) {
-                while (!printed);
-                printed = 0;
-            } 
+            do {
+                if (send_packet(data, size) == -1) {ret = -1; run = 0;}
+                else {
+                    ret = receive_packet(); 
+                    if (ret == -1) run = 0;
+                }
+            } while ((ret == -3) && (ret != -1) && ((ret != 3) || (ret != 1)));
         }
         else {
             printf("Comando incompleto\n");
             continue;
         }
     }
-    return 0;
+    free(line);
+    return ret;
 }

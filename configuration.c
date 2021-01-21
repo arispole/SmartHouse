@@ -3,25 +3,19 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <readline/readline.h>
-#include <readline/history.h>
+// #include <readline/readline.h>
+// #include <readline/history.h>
 
 #include "constants.h"
 #include "commands.h"
 #include "packets.h"
-#include "buffer_client.h"
+#include "packet_handler_client.h"
 #include "configuration.h"
 
-struct Pins {
-    uint8_t Num;
-    char Name[MAX_LEN_NAME];
-};
-
-typedef struct {
-    bool isConfigured;
-    char deviceName[MAX_LEN_NAME];
-    Pins pinNames[NUM_PIN];
-} Configuration;
+extern int fd;
+extern OperationPacket op; 
+extern ConfigurationPacket cp;
+extern ControlPacket rc;
 
 Configuration config_dev;
 
@@ -48,7 +42,9 @@ void setPinName(uint8_t pin, char* name) {
 }
 
 char* getPinName(uint8_t pin, uint8_t k) {
-    uint8_t i=0;
+
+    uint8_t i = 0;
+    
     if (config_dev.isConfigured) {
         while (config_dev.pinNames[k*BLOC_PIN+i].Num != pin && i <= BLOC_PIN) ++i;
         return config_dev.pinNames[k*BLOC_PIN+i].Name;
@@ -82,65 +78,64 @@ numPin getPinByName(char *name){
     return numpin;
 }
 
-int getOldConfig(cbuf_handle_t tx_buf) {
+int getOldConfig() {    
 
-    //ask for old configuration (if not present, it returns a nack)
-
-    ControlPacket rc = {
-        .command = readConfig
-    };
-
-    circular_buf_put(tx_buf, SOH);
-    uint8_t *data = (uint8_t*) &rc;
-    uint8_t checksum = 0;
+    int ret;
     size_t size = sizeof(ControlPacket);
-    while (size) {
-        circular_buf_put(tx_buf, *data);
-        checksum ^= *data;
-        --size;
-        ++data;
+    uint8_t *data = (uint8_t*) &rc;
+
+    rc.command = readConfig;
+    do {
+        if (send_packet(data, size) == -1) return -1;
+        ret = receive_packet();
+    } while ((ret != 3) && (ret != -1));                        //loops until it receives and ACK
+    if (ret == -1) return -1;
+    ret = receive_packet();
+    if (ret == -1) return -1;                                      
+    else if (ret == -3) return 0;                               //old configuration not present (NACK)
+    while  (ret != -2) {
+        if (cp.pin_num == 24) setDeviceName(cp.pin_name);
+        else setPinName(cp.pin_num, cp.pin_name);
+        ret = receive_packet();
+        if (ret == -1) return -1;
     }
-    circular_buf_put(tx_buf, checksum);
-    circular_buf_put(tx_buf, EOT);
+    set_isConfigured();
+    return 1;
+}
+
+int resetConfig() {
+
+    uint8_t ret;
+    uint8_t *data = (uint8_t*) &rc;
+    size_t size = sizeof(ControlPacket);
+
+    rc.command = resetConf;
+    do {
+        if (send_packet(data, size) == -1) return -1;
+        ret = receive_packet();
+    } while ((ret != 3) && (ret != -1));
+    if (ret == -1) return -1;
     return 0;
 }
 
-int resetConfig(cbuf_handle_t tx_buf) {
+int configPin (uint8_t k) {
 
-    ControlPacket rc = {
-        .command = resetConf
-    };
-
-    circular_buf_put(tx_buf, SOH);
-    uint8_t *data = (uint8_t*) &rc;
-    uint8_t checksum = 0;
-    size_t size = sizeof(ControlPacket);
-    while (size) {
-        circular_buf_put(tx_buf, *data);
-        checksum ^= *data;
-        --size;
-        ++data;
-    }
-    circular_buf_put(tx_buf, checksum);
-    circular_buf_put(tx_buf, EOT);
-    return 0;
-}
-
-void configPin (uint8_t k, cbuf_handle_t tx_buf) {
-
+    char *line = NULL;
+    size_t len = 0;
     char* token;
     uint8_t pin, i, stop;
-    ConfigurationPacket cp;
     uint8_t* data = (uint8_t*) &cp;
-    uint8_t checksum;
-    const size_t size = sizeof(ConfigurationPacket);
-    size_t s;
+    size_t size = sizeof(ConfigurationPacket);
     numPin numpin;
-
+    int ret = 0;
+    
     stop = 0;
     while (!stop) {
         printf("Inserisci il numero del pin e il nome, [quit] per terminare\n");
-        token = readline(NULL);
+        getline(&line, &len, stdin);
+        char *newline = strchr(line, '\n' ); 
+        if ( newline ) *newline = 0;
+        token = line;
         if (strlen(token) == 0 || !memcmp(token, " ", 1))
             continue;
         if (!strcmp(token,"quit")) {
@@ -177,67 +172,60 @@ void configPin (uint8_t k, cbuf_handle_t tx_buf) {
                 cp.pin_num = k*BLOC_PIN+i;
                 memset(cp.pin_name, 0, MAX_LEN_NAME);
                 memcpy(cp.pin_name, token, strlen(token));
-                circular_buf_put(tx_buf, SOH);
-                data = (uint8_t*) &cp;
-                checksum = 0;
-                s = size;
-                while (s) {
-                    circular_buf_put(tx_buf, *data);
-                    checksum ^= *data;
-                    --s;
-                    ++data;
-                } 
-                circular_buf_put(tx_buf, checksum);
-                circular_buf_put(tx_buf, EOT);
+                do {
+                    if (send_packet(data, size) == -1) {ret = -1; stop = 0;}
+                    else {
+                        ret = receive_packet(); 
+                        if (ret == -1) stop = 0;
+                    }
+                } while ((ret != 3) && (ret != -1));
             }
         }
     }
+    free(line);
+    return ret;
 }
 
-int configure(cbuf_handle_t tx_buf) {
+int configure() {
     
-    char* res;
+    char *line = NULL;
+    size_t len = 0;
     char* name;
-    uint8_t stop;
-    ConfigurationPacket cp;
+    uint8_t stop; 
     uint8_t* data = (uint8_t*) &cp;
-    uint8_t checksum;
-    const size_t size = sizeof(ConfigurationPacket);
-    size_t s;
+    size_t size = sizeof(ConfigurationPacket);
+    int ret;
 
     printf("\n\nINIZIO CONFIGURAZIONE\n\n");
-
     bool nomedev = true;
     if (config_dev.isConfigured) {
         printf("Cambiare nome al device? [s/n]\n");
-        res = readline(NULL);
-        if (!strcmp(res,"n")) nomedev = false;
+        getline(&line, &len, stdin);
+        char *newline = strchr(line,'\n'); 
+        if ( newline ) *newline = 0;
+        if (!strcmp(line,"n")) nomedev = false;
     }
-    
     stop = 0;
     while (!stop && nomedev){
         printf("Inserisci il nome del device:\n");
-        name = readline(NULL);
-        if (strlen(name) > MAX_LEN_NAME - 1)
+        getline(&line, &len, stdin);
+        char *newline = strchr(line,'\n'); 
+        if (newline) *newline = 0;
+        if (strlen(line) > MAX_LEN_NAME - 1)
                 printf("nome device deve essere <= %d\n", MAX_LEN_NAME - 1);
         else {
-            setDeviceName(name);
+            setDeviceName(line);
             cp.command = conf;
             cp.pin_num = 24;
             memset(cp.pin_name, 0, MAX_LEN_NAME);
-            memcpy(cp.pin_name, name, strlen(name));
-            circular_buf_put(tx_buf, SOH);
-            data = (uint8_t*) &cp;
-            checksum = 0;
-            s = size;
-            while (s) {
-                circular_buf_put(tx_buf, *data);
-                checksum ^= *data;
-                --s;
-                ++data;
-            }
-            circular_buf_put(tx_buf, checksum);
-            circular_buf_put(tx_buf, EOT);
+            memcpy(cp.pin_name, line, strlen(line));
+            do {
+                if (send_packet(data, size) == -1) {ret = -1; stop = 0;}
+                else {
+                    ret = receive_packet(); 
+                    if (ret == -1) stop = 0;
+                }
+            } while ((ret != 3) && (ret != -1));
             stop = 1;
         }
     }
@@ -245,16 +233,29 @@ int configure(cbuf_handle_t tx_buf) {
     printf("CONFIGURAZIONE PIN\n\n");
     printf(" Pin disponibili:   PIN ANALOGICI\n");
     printf("                    0 - 1 - 2 - 3 - 4 - 5 - 6 - 7\n\n");
-    configPin(0, tx_buf);
+    if (configPin(0) == -1) return -1;
     printf(" Pin disponibili:   PIN DIGITALI/SWITCH/DIMMER\n");
     printf("                    2 - 3 - 5 - 6 - 7 - 8 - 11 - 12\n\n");
-    configPin(1, tx_buf);
+    if (configPin(1) == -1) return -1;
     printf(" Pin disponibili:   PIN DIGITALI INPUT\n");
     printf("                    46 - 47 - 48 - 49 - 50 - 51 - 52 - 53\n\n");
-    configPin(2, tx_buf);
-    config_dev.isConfigured = true;
+    if (configPin(2) == -1) return -1;
+    set_isConfigured();
     printf("\n\nCONFIGURAZIONE TERMINATA\n\n");
-    return 0;
+    data = (uint8_t*) &rc;
+    size = sizeof(ControlPacket);
+    rc.command = stopConfig;
+    do {
+        if (send_packet(data, size) == -1) {ret = -1; stop = 0;}
+        else {
+            ret = receive_packet(); 
+            if (ret == -1) stop = 0;
+        }
+    } while ((ret != 3) && (ret != -1));
+
+    free(line);
+
+    return ret;
 }
 
 void printConfiguration() {

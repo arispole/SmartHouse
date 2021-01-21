@@ -259,35 +259,35 @@ uint8_t get_intensity(uint8_t pin_num) {
   switch (pin_num) {
       case 2:
         if (isEnabled) intensity = (255 - OCR3BL);     
-        else intensity = (PORTE&mask2) != 0 ? 100 : 0;
+        else intensity = (PORTE&mask2) != 0 ? 255 : 0;
         break;
       case 3:
         if (isEnabled) intensity = (255 - OCR3CL);     
-        else intensity = (PORTE&mask3) != 0 ? 100 : 0;
+        else intensity = (PORTE&mask3) != 0 ? 255 : 0;
         break;
       case 5:
         if (isEnabled) intensity = (255 - OCR3AL);     
-        else intensity = (PORTE&mask5) != 0 ? 100 : 0;
+        else intensity = (PORTE&mask5) != 0 ? 255 : 0;
         break;
       case 6:
         if (isEnabled) intensity = (255 - OCR4AL);     
-        else intensity = (PORTH&mask6) != 0 ? 100 : 0;
+        else intensity = (PORTH&mask6) != 0 ? 255 : 0;
         break;
       case 7:
         if (isEnabled) intensity = (255 - OCR4BL);     
-        else intensity = (PORTH&mask7) != 0 ? 100 : 0;
+        else intensity = (PORTH&mask7) != 0 ? 255 : 0;
         break;
       case 8:
         if (isEnabled) intensity = (255 - OCR4CL);     
-        else intensity = (PORTH&mask8) != 0 ? 100 : 0;
+        else intensity = (PORTH&mask8) != 0 ? 255 : 0;
         break;
       case 11:
         if (isEnabled) intensity = (255 - OCR1AL);     
-        else intensity = (PORTB&mask11) != 0 ? 100 : 0;
+        else intensity = (PORTB&mask11) != 0 ? 255 : 0;
         break;
       case 12:
         if (isEnabled) intensity = (255 - OCR1BL);     
-        else intensity = (PORTB&mask12) != 0 ? 100 : 0;
+        else intensity = (PORTB&mask12) != 0 ? 255 : 0;
         break;
     }
   return intensity;

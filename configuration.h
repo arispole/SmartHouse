@@ -1,9 +1,18 @@
-typedef struct Pins Pins;
-
 typedef struct {
     int num;
     int ind;
 } numPin;
+
+typedef struct {
+    uint8_t Num;
+    char Name[MAX_LEN_NAME];
+} Pins;
+
+typedef struct {
+    bool isConfigured;
+    char deviceName[MAX_LEN_NAME];
+    Pins pinNames[NUM_PIN];
+} Configuration;
 
 void configInit();
 
@@ -19,10 +28,10 @@ char* getDeviceName();
 
 numPin getPinByName(char* name);
 
-int getOldConfig(cbuf_handle_t tx_buf);
+int getOldConfig();
 
-int resetConfig(cbuf_handle_t tx_buf);
+int resetConfig();
 
-int configure(cbuf_handle_t tx_buf);
+int configure();
 
 void printConfiguration();

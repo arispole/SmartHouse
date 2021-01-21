@@ -130,7 +130,8 @@ void resetConfig(void) {
 
   unsigned int address;
 
-  for (address = 0; address < (25*MAX_LEN_NAME); address++) EEPROM_write(address, 0);
+  for (address = 0; address < (25*MAX_LEN_NAME); address++) EEPROM_write(address, 0);   
+
 }
 
 int readCP(uint8_t checksum) {
@@ -149,9 +150,7 @@ int readCP(uint8_t checksum) {
   c = UART_getChar(uart);
   if (c != checksum) ret = -1;
   c = UART_getChar(uart);
-  if (c == EOT && ret != -1) {
-    ret = saveConfig();
-  }
+  if (c == EOT && ret != -1) ret = saveConfig();
   return ret;
 }
 
@@ -205,23 +204,31 @@ int readPacket(void) {
     c = UART_getChar(uart);
     if (c != checksum) ret = -1;
     if (UART_getChar(uart) == EOT && ret != -1) {
-          resetConfig();
-          ret = 0;
+      resetConfig();
+      ret = 0;
     }
   }
   else if (c == readConfig) {
     c = UART_getChar(uart);
     if (c != checksum) ret = -1;
     if (UART_getChar(uart) == EOT && ret != -1) {
+      sendPacket(0);
       if (EEPROM_read(0) != 3) {
         resetConfig();
-        EEPROM_write(0,3);
         ret = -1;
       }
       else {
         readConfiguration();
         ret = 3;
       } 
+    }
+  }
+  else if (c == stopConfig) {
+    c = UART_getChar(uart);
+    if (c != checksum) ret = -1;
+    if (UART_getChar(uart) == EOT && ret != -1) {
+      ret = 0;
+      EEPROM_write(0,3);
     }
   }
   else ret = -1;

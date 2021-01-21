@@ -8,7 +8,7 @@
 #include "uart.h"
 //#include "pwm.h"
 
-#define BAUD 19200
+#define BAUD 9600
 #define MYUBRR (F_CPU/16/BAUD-1)
 
 struct UARTI {
@@ -39,10 +39,16 @@ UART* UART_init() {
     uart->rx_size=0;
 
     // Set baud rate
-    UBRR0H = (uint8_t)(MYUBRR>>8);
+
+/*    UBRR0H = (uint8_t)(MYUBRR>>8);
     UBRR0L = (uint8_t)MYUBRR;
-    UCSR0C = (1<<UCSZ01) | (1<<UCSZ00); /* 8-bit data */ 
-    UCSR0B = (1<<RXEN0) | (1<<TXEN0) | (1<<RXCIE0);   /* Enable RX and TX */  
+    UCSR0C = (1<<UCSZ01) | (1<<UCSZ00);
+    UCSR0B = (1<<RXEN0) | (1<<TXEN0) | (1<<RXCIE0); 
+*/
+    UBRR1H = (uint8_t)(MYUBRR>>8);
+    UBRR1L = (uint8_t)MYUBRR;
+    UCSR1C = (1<<UCSZ11) | (1<<UCSZ10); /* 8-bit data */ 
+    UCSR1B = (1<<RXEN1) | (1<<TXEN1) | (1<<RXCIE1);   /* Enable RX and TX */  
     sei();
     return &uart_0;
 }
@@ -77,7 +83,10 @@ void UART_putChar(UART* uart, uint8_t c) {
         }
         ++uart->tx_size;
     }
+    UCSR1B |= (1<<UDRIE1);
+/*
     UCSR0B |= (1<<UDRIE0);
+*/
 }
 
 uint8_t UART_getChar(UART* uart) {
@@ -96,6 +105,36 @@ uint8_t UART_getChar(UART* uart) {
     return c;
 }
 
+ISR(USART1_RX_vect) {
+
+    uint8_t c = UDR1;
+
+    if (uart_0.rx_size < UART_BUFFER_SIZE) {
+        uart_0.rx_buffer[uart_0.rx_end] = c;
+        ++uart_0.rx_end;
+        if (uart_0.rx_end >= UART_BUFFER_SIZE) {
+            uart_0.rx_end = 0;
+        }
+        ++uart_0.rx_size;
+    }
+}
+
+ISR(USART1_UDRE_vect) {
+
+    if (!uart_0.tx_size) {
+        UCSR1B &= ~(1<<UDRIE1);
+    }
+    else {
+        UDR1 = uart_0.tx_buffer[uart_0.tx_start];
+        ++uart_0.tx_start;
+        if (uart_0.tx_start >= UART_BUFFER_SIZE) {
+            uart_0.tx_start = 0;
+        }
+        --uart_0.tx_size;
+    }
+}
+
+/*
 ISR(USART0_RX_vect) {
 
     uint8_t c = UDR0;
@@ -110,6 +149,7 @@ ISR(USART0_RX_vect) {
     }
 }
 
+
 ISR(USART0_UDRE_vect) {
 
     if (!uart_0.tx_size) {
@@ -123,4 +163,5 @@ ISR(USART0_UDRE_vect) {
         }
         --uart_0.tx_size;
     }
-} 
+}
+*/

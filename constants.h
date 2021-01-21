@@ -1,3 +1,4 @@
+#define MAX_LEN_LINE 50
 #define MAX_LEN_NAME 15
 #define NUM_PIN 24
 #define BLOC_PIN 8
