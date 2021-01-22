@@ -6,9 +6,9 @@
 // #include <readline/readline.h>
 // #include <readline/history.h>
 
-#include "constants.h"
-#include "commands.h"
-#include "packets.h"
+#include "../common/constants.h"
+#include "../common/commands.h"
+#include "../common/packets.h"
 #include "packet_handler_client.h"
 #include "configuration.h"
 
@@ -183,6 +183,7 @@ int configPin (uint8_t k) {
         }
     }
     free(line);
+    line = NULL;
     return ret;
 }
 
@@ -254,6 +255,7 @@ int configure() {
     } while ((ret != 3) && (ret != -1));
 
     free(line);
+    line = NULL;
 
     return ret;
 }

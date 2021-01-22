@@ -7,9 +7,9 @@
 #include <math.h> 
 #include <stdbool.h>
 
-#include "constants.h"
-#include "commands.h"
-#include "packets.h"
+#include "../common/constants.h"
+#include "../common/commands.h"
+#include "../common/packets.h"
 #include "shell.h"
 #include "configuration.h"
 #include "packet_handler_client.h"
@@ -98,7 +98,7 @@ int shellFunction() {
     run = 1;
     while (run) 
     {
-        printf("Inserisci un comando: ([quit] per uscire, [help] per lista comandi)\n");
+        printf("\nInserisci un comando: ([quit] per uscire, [help] per lista comandi)\n\n");
         getline(&line, &len, stdin);
         char *newline = strchr(line, '\n' ); 
         if ( newline ) *newline = 0;

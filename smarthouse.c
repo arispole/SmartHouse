@@ -7,9 +7,9 @@
 #include <avr/interrupt.h>
 #include <stdbool.h> 
 
-#include "constants.h"
-#include "commands.h"
-#include "packets.h"
+#include "../common/constants.h"
+#include "../common/commands.h"
+#include "../common/packets.h"
 #include "uart.h"
 #include "pwm.h"
 #include "digital_input.h"

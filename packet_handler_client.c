@@ -7,9 +7,9 @@
 #include <stdbool.h>
 #include <sys/socket.h>
 
-#include "constants.h"
-#include "commands.h"
-#include "packets.h"
+#include "../common/constants.h"
+#include "../common/commands.h"
+#include "../common/packets.h"
 #include "configuration.h"
 #include "packet_handler_client.h"
 
@@ -24,19 +24,19 @@ void print_packet()
         if (op.pin_num > 45 && op.pin_num < 54) 
         {
             printf("\nLettura %s\n", getPinName(op.pin_num, 2));
-            printf("Valore: %d\n\n", (int) op.intensity);
+            printf("Valore: %d\n", (int) op.intensity);
         }
         else 
         {
             printf("\nLettura %s\n", getPinName(op.pin_num, 0));
-            printf("Valore: %4.2f\n\n", (float) op.intensity*5/255);
+            printf("Valore: %4.2f\n", (float) op.intensity*5/255);
         }
     }
     else //status
     {
         printf("\nStato %s\n", getPinName(op.pin_num, 1));
         printf("Luce %s\n", (op.intensity!=0)? "accesa" : "spenta");
-        printf("Intensità %d\n\n", (int) round((float) op.intensity*100/255));
+        printf("Intensità %d\n", (int) round((float) op.intensity*100/255));
     }
 }
 

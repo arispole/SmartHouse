@@ -3,7 +3,7 @@
 #include <stdbool.h> 
 
 #include "pwm.h"
-#include "constants.h"
+#include "../common/constants.h"
 
 // pin masks
 const uint8_t mask2  = (1 << 4);
